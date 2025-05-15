@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 """
 Скрипт для заполнения базы данных тестовыми категориями и товарами
@@ -145,7 +144,7 @@ def seed_db():
     """Заполняет базу данных тестовыми данными"""
     with app.app_context():
         print("Начинаем заполнение базы данных...")
-        
+
         # Создаем категории и подкатегории
         for category_data in CATEGORIES:
             category = Category(
@@ -155,9 +154,9 @@ def seed_db():
             )
             db.session.add(category)
             db.session.commit()
-            
+
             print(f"Создана категория: {category.name}")
-            
+
             # Добавляем подкатегории
             for subcategory_data in category_data["subcategories"]:
                 subcategory = Category(
@@ -168,12 +167,12 @@ def seed_db():
                 )
                 db.session.add(subcategory)
                 db.session.commit()
-                
+
                 print(f"  - Создана подкатегория: {subcategory.name}")
-                
+
                 # Генерируем товары для подкатегории
                 num_products = random.randint(5, 15)  # Случайное количество товаров от 5 до 15
-                
+
                 for i in range(num_products):
                     # Выбираем названия товаров в зависимости от категории
                     if subcategory.name == "Смартфоны":
@@ -197,16 +196,29 @@ def seed_db():
                         product_name = f"{random.choice(brands)} {random.choice(['WashPro', 'CleanMaster', 'EcoBubble', 'PerfectWash', 'AquaControl'])} {random.randint(5, 12)}000"
                     else:
                         product_name = f"Товар {subcategory.name} #{i+1}"
-                    
+
                     # Генерируем цены
                     price = round(random.uniform(1000, 150000), -1)  # Цена от 1000 до 150000 с округлением до десятков
                     is_sale = random.choice([True, False])
                     old_price = round(price * random.uniform(1.1, 1.5), -1) if is_sale else None  # Старая цена на 10-50% выше
-                    
+
                     # Создаем товар
+                    # Создаем базовый slug и проверяем его уникальность
+                    base_slug = slugify(product_name)
+                    unique_slug = base_slug
+
+                    # Проверяем существует ли товар с таким slug
+                    existing_product = Product.query.filter_by(slug=unique_slug).first()
+
+                    # Если существует, добавляем короткий случайный суффикс
+                    if existing_product:
+                        suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+                        unique_slug = f"{base_slug}-{suffix}"
+
+                    # Создаем объект товара и добавляем его в базу данных
                     product = Product(
                         name=product_name,
-                        slug=slugify(product_name),
+                        slug=unique_slug,
                         sku=generate_sku(),
                         description=f"Подробное описание товара {product_name}. Здесь могут быть перечислены особенности, преимущества и технические характеристики.",
                         price=price,
@@ -217,10 +229,10 @@ def seed_db():
                         is_new=random.choice([True, False]),
                         is_sale=is_sale
                     )
-                    
+
                     db.session.add(product)
                     db.session.commit()
-                    
+
                     # Добавляем характеристики товара
                     if subcategory.name in CATEGORY_SPECS_MAP:
                         specs = CATEGORY_SPECS_MAP[subcategory.name]
@@ -231,11 +243,11 @@ def seed_db():
                                 value=random.choice(spec_values)
                             )
                             db.session.add(spec)
-                        
+
                         db.session.commit()
-                    
+
                     print(f"    * Создан товар: {product.name} - {product.price} руб.")
-        
+
         print("База данных успешно заполнена!")
 
 
